@@ -1,0 +1,165 @@
+-	script	ProntVendorsCfg	-1,{
+	end;
+OnInit:
+	.@mod$ = "ore-enrichment-npc";
+	.rate_Ori = callfunc("F_ModSetting", .@mod$, "rate_Ori", 10);
+	.rate_Elu = callfunc("F_ModSetting", .@mod$, "rate_Elu", 10);
+	end;
+}
+
+prt_in,52,62,7	script	Rugged Blacksmith	826,{
+	callfunc "EnrichMain_Multi","Rugged Blacksmith";
+	end;
+}
+
+
+//================================================================================
+//	Single Exchange (Based on "refine.txt", specifically "orimain" func Line#1113)
+//================================================================================
+function	script	EnrichMain_Single	{
+	if (checkweight(1201,1) == 0) {
+		mes "- Hey! Wait a minute !! -";
+		mes "This stuff is pretty heavy, and it looks like you're already carrying too much.";
+		mes "Please try again after you make some room.";
+		close;
+	}
+
+	.@npc_name$ = getarg(0);
+
+	mes "["+ .@npc_name$ +"]";
+	mes "I can enrich your Oridecon or Elunium to make them more potent... But it's not cheap.";
+	mes "I'll need "+ .rate_Ori +" refined Oridecon to make 1 Enriched Oridecon ore, and "+ .rate_Elu +" refined Elunium to make 1 Enriched Elunium ore for you.";
+	next;
+	switch(select("Make Enriched Oridecon:Make Enriched Elunium")) {
+	case 1:
+		if (countitem(984) >= .rate_Ori) {
+			delitem 984,.rate_Ori;	// Oridecon
+			getitem 7620,1;	// Enriched Oridecon
+			mes "["+ .@npc_name$ +"]";
+			mes "Here's your Enriched Oridecon.";
+			close;
+		}
+		else {
+			mes "["+ .@npc_name$ +"]";
+			mes "You're kidding me, right?";
+			mes "I just told you that I need "+ .rate_Ori +" Oridecon to make an Enriched Oridecon.";
+			close;
+		}
+	case 2:
+		if (countitem(985) >= .rate_Elu) {
+			delitem 985,.rate_Elu;	// Elunium
+			getitem 7619,1;	// Enriched Elunium
+			mes "["+ .@npc_name$ +"]";
+			mes "Here's your Enriched Elunium.";
+			close;
+		}
+		else {
+			mes "["+ .@npc_name$ +"]";
+			mes "You're kidding me, right?";
+			mes "I just told you that I need "+ .rate_Elu +" Elunium to make a Enriched Elunium.";
+			close;
+		}
+	}
+}
+
+
+//================================================================================
+//	Multi-Exchange (Based on "novice_exchange.txt", a.k.a. Red Potion Exchange)
+//================================================================================
+
+function	script	EnrichMain_Multi	{
+	if (checkweight(1201,1) == 0) {
+		mes "- Hey! Wait a minute !! -";
+		mes "This stuff is pretty heavy, and it looks like you're already carrying too much.";
+		mes "Please try again after you make some room.";
+		close;
+	}
+
+	.@npc_name$ = getarg(0);
+
+	mes "["+ .@npc_name$ +"]";
+	mes "I can enrich your Oridecon or Elunium to make them more potent... But it's not cheap.";
+	mes "I'll need "+ .rate_Ori +" refined Oridecon to make 1 Enriched Oridecon ore, and "+ .rate_Elu +" refined Elunium to make 1 Enriched Elunium ore for you.";
+	next;
+	switch(select("Make Enriched Oridecon:Make Enriched Elunium")) {
+		case 1:
+			callfunc "F_OreEnrich", 984, .rate_Ori, .@npc_name$;	// Oridecon
+			break;
+		case 2:
+			callfunc "F_OreEnrich", 985, .rate_Elu, .@npc_name$;	// Elunium
+			break;
+	}
+}
+
+function	script	F_OreEnrich	{
+	.@item_req = getarg(0);
+	.@req_amount = getarg(1);
+	.@npc_name$ = getarg(2);
+
+	if (countitem(.@item_req) < .@req_amount) {
+		mes "["+ .@npc_name$ +"]";
+		mes "You're kidding me, right?";
+		mes "I just told you that I need "+ .@req_amount +" "+ getitemname(.@item_req) +" to make an Enriched "+ getitemname(.@item_req) +".";
+		close;
+	}
+	else {
+		mes "["+ .@npc_name$ +"]";
+		mes "Okay, let me check";
+		mes "how many "+ getitemname(.@item_req) +" you have on you. Hmm...";
+		next;
+		mes "["+ .@npc_name$ +"]";
+		mes "You have a total of "+ countitem(.@item_req) +" "+ getitemname(.@item_req) +".";
+		mes "I can make up to "+ (countitem(.@item_req)/.@req_amount) +" Enriched "+ getitemname(.@item_req) +".";
+		next;
+		mes "["+ .@npc_name$ +"]";
+		mes "What do you say?";
+		mes "Do we have a deal?";
+		next;
+		if (select("Deal.:No deal.") == 1) {
+			mes "["+ .@npc_name$ +"]";
+			mes "Now, I can trade you between 1 and 100 Enriched "+ getitemname(.@item_req) +" at a time.";
+			mes "If you change your mind, just enter '0' to cancel.";
+			next;
+			while(1) {
+				input .@input,0,101;
+				if (.@input == 0) {
+					mes "["+ .@npc_name$ +"]";
+					mes "Come back later if you change your mind.";
+					close;
+				}
+				else if (.@input > 100) {
+					mes "["+ .@npc_name$ +"]";
+					mes "I can't give you more than 100 Enriched "+ getitemname(.@item_req) +" at a time.";
+					mes "Let's try this again.";
+					next;
+				}
+				else {
+					break;
+				}
+			}
+			.@put_out_item = .@input * .@req_amount;
+			if (countitem(.@item_req) < .@put_out_item) {
+				mes "["+ .@npc_name$ +"]";
+				mes "Uh oh, the number you entered doesn't seem right. You better check the number of "+ getitemname(.@item_req) +" that you have again.";
+				close;
+			}
+			mes "["+ .@npc_name$ +"]";
+			mes "There you go!";
+			mes "Check how many Enriched "+ getitemname(.@item_req) +" I've given you, it should be good.";
+			mes "Thanks, that was a good deal~";
+			delitem .@item_req,.@put_out_item;
+			switch(.@item_req) {
+				case 984:
+					getitem 7620,.@input; // Enriched Oridecon
+					break;
+				case 985:
+					getitem 7619,.@input; // Enriched Elunium
+					break;
+			}
+			close;
+		}
+		mes "["+ .@npc_name$ +"]";
+		mes "Come back later if you change your mind.";
+		close;
+	}
+}
